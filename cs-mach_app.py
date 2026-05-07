@@ -4,19 +4,15 @@ import io
 import requests
 import matplotlib.pyplot as plt
 
+
+# =========================================================
+# 🎨 CS-MACH1 BRANDING
+# =========================================================
 st.image("logo.png", width=250)
 
 st.set_page_config(
     page_title="CS-MACH1 my envlogger pipeline",
     page_icon="logo.png",
-    layout="wide"
-)
-# =========================================================
-# 🎨 CS-MACH1 BRANDING
-# =========================================================
-st.set_page_config(
-    page_title="CS-MACH1 | Logger vs CORA",
-    page_icon="🌡",
     layout="wide"
 )
 
@@ -56,8 +52,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Logo (optional: put logo.png in repo)
-st.image("logo.png", width=220)
 
 st.markdown(
     "<div class='main-header'>🌊 CS-MACH1: What does my envlogger data say about my dive? 🌊 </div>",
