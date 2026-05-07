@@ -221,19 +221,12 @@ if uploaded_files:
 # ---------------------------------------------------------
 # RESET BUTTON
 # ---------------------------------------------------------
-col1, col2 = st.columns(2)
+#col1, col2 = st.columns(2)
 
-with col1:
-
-    start_button = st.button(
-        "▶️ Start Processing"
-    )
-
-with col2:
-
-    if st.button("🧹 Reset"):
-        st.session_state.clear()
-        st.rerun()
+start_button = st.button("▶️ Start Processing") 
+if st.button("🧹 Reset"):
+    st.session_state.clear()
+    st.rerun()
 
 # =========================================================
 # PROCESS DATA
