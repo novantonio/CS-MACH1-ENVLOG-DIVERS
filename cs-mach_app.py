@@ -6,12 +6,11 @@ import matplotlib.pyplot as plt
 
 
 # =========================================================
-# 🧠 LOGGER PROCESSING (cached for speed)
+# 🧠 LOGGER PROCESSING (cached)
 # =========================================================
 @st.cache_data(show_spinner=False)
 def process_logger(raw_df):
 
-    # metadata extraction (safe)
     serial = raw_df.iloc[9, 1]
     name = raw_df.iloc[10, 1]
     sampling = raw_df.iloc[13, 1]
@@ -19,14 +18,12 @@ def process_logger(raw_df):
     lat = pd.to_numeric(raw_df.iloc[15, 1], errors='coerce')
     lon = pd.to_numeric(raw_df.iloc[16, 1], errors='coerce')
 
-    # fallback coordinates
     if pd.isna(lat) or pd.isna(lon):
         lat, lon = 44.377253, 9.073425
 
     if isinstance(name, str) and "surf" in name.lower():
         lat, lon = 43.573851, 7.126338
 
-    # data extraction
     df = raw_df.iloc[21:, :].copy()
     df.columns = ['time', 'temperature']
 
@@ -37,7 +34,6 @@ def process_logger(raw_df):
 
     df['month'] = df['time'].dt.month
 
-    # metadata
     df['serial'] = serial
     df['custom_name'] = name
     df['sampling_f'] = sampling
@@ -48,7 +44,7 @@ def process_logger(raw_df):
 
 
 # =========================================================
-# 🌊 CORA DATA (cached by lat/lon)
+# 🌊 CORA DATA (cached)
 # =========================================================
 @st.cache_data(ttl=86400, show_spinner=False)
 def load_cora_data(lat, lon):
@@ -83,7 +79,7 @@ def load_cora_data(lat, lon):
 # =========================================================
 # 🎯 STREAMLIT UI
 # =========================================================
-st.title("🌡 CORA vs Multiple Logger Temperature Comparison")
+st.title("🌡 CORA vs Multiple Logger Comparison")
 
 uploaded_files = st.file_uploader(
     "Upload one or more logger CSV files",
@@ -91,91 +87,108 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True
 )
 
-
+# store raw files in session state
 if uploaded_files:
+    st.session_state["files"] = uploaded_files
 
-    logger_datasets = []
+# =========================================================
+# ▶️ START BUTTON
+# =========================================================
+if "files" in st.session_state and st.session_state["files"]:
 
-    # =====================================================
-    # 📂 PROCESS ALL FILES
-    # =====================================================
-    for file in uploaded_files:
-        raw = pd.read_csv(file)
-        df = process_logger(raw)
+    if st.button("▶️ Start Processing"):
 
-        if not df.empty:
-            logger_datasets.append(df)
+        files = st.session_state["files"]
 
-    if len(logger_datasets) == 0:
-        st.error("No valid logger datasets found.")
-        st.stop()
+        logger_datasets = []
 
-    # =====================================================
-    # 🌍 USE FIRST FILE FOR LOCATION
-    # =====================================================
-    lat = logger_datasets[0]['latitude'].iloc[0]
-    lon = logger_datasets[0]['longitude'].iloc[0]
+        progress = st.progress(0)
+        status = st.empty()
 
-    # =====================================================
-    # 🌊 LOAD CORA (FAST CACHE)
-    # =====================================================
-    try:
-        cora_data = load_cora_data(lat, lon)
-        st.success("CORA data loaded")
-    except Exception as e:
-        st.error(f"CORA loading failed: {e}")
-        st.stop()
+        # =====================================================
+        # 📂 PROCESS FILES WITH PROGRESS BAR
+        # =====================================================
+        for i, file in enumerate(files):
 
-    # =====================================================
-    # 📊 CORA MONTHLY STATS
-    # =====================================================
-    cora_stats = cora_data.groupby('month')['TEMP'].agg(['mean', 'std']).reset_index()
+            status.write(f"Processing {file.name}...")
 
-    # =====================================================
-    # 📈 PLOT
-    # =====================================================
-    fig, ax = plt.subplots(figsize=(10, 5))
+            raw = pd.read_csv(file)
+            df = process_logger(raw)
 
-    # CORA reference
-    ax.errorbar(
-        cora_stats['month'],
-        cora_stats['mean'],
-        yerr=cora_stats['std'],
-        fmt='-o',
-        label='CORA (mean ± std)'
-    )
+            if not df.empty:
+                logger_datasets.append(df)
 
-    # =====================================================
-    # ⭐ MULTIPLE LOGGERS (STAR MARKERS)
-    # =====================================================
-    for i, df in enumerate(logger_datasets):
+            progress.progress((i + 1) / len(files))
 
-        stats = df.groupby('month')['temperature'].mean().reset_index()
+        if len(logger_datasets) == 0:
+            st.error("No valid datasets found.")
+            st.stop()
 
-        label = df['custom_name'].iloc[0] if 'custom_name' in df.columns else f"Logger {i+1}"
+        # =====================================================
+        # 🌍 LOCATION FROM FIRST FILE
+        # =====================================================
+        lat = logger_datasets[0]['latitude'].iloc[0]
+        lon = logger_datasets[0]['longitude'].iloc[0]
 
-        ax.plot(
-            stats['month'],
-            stats['temperature'],
-            marker='*',
-            linestyle='None',
-            markersize=14,
-            label=label
-        )
+        # =====================================================
+        # 🌊 LOAD CORA
+        # =====================================================
+        try:
+            cora_data = load_cora_data(lat, lon)
+            st.success("CORA data loaded")
+        except Exception as e:
+            st.error(f"CORA loading failed: {e}")
+            st.stop()
 
-    # =====================================================
-    # 🎨 FORMATTING
-    # =====================================================
-    ax.set_xticks(range(1, 13))
-    ax.set_xticklabels([
-        'Jan','Feb','Mar','Apr','May','Jun',
-        'Jul','Aug','Sep','Oct','Nov','Dec'
-    ])
+        # =====================================================
+        # 📊 STATS
+        # =====================================================
+        cora_stats = cora_data.groupby('month')['TEMP'].agg(['mean', 'std']).reset_index()
+        
+        cora_data['month'] = cora_data['time'].dt.month
+        cora_monthly_stats = cora_data.groupby('month')['TEMP'].agg(['mean', 'std']).reset_index()
 
-    ax.set_xlabel("Month")
-    ax.set_ylabel("Temperature [°C]")
-    ax.set_title("CORA vs Multiple Logger Monthly Temperature")
-    ax.grid(True)
-    ax.legend()
 
-    st.pyplot(fig)
+        # =====================================================
+        # 📈 PLOT
+        # =====================================================
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+        # CORA
+        ax.scatter(cora_monthly_stats['month'], cora_monthly_stats['mean'], label='Monthly Mean Temperature')
+        ax.errorbar(cora_monthly_stats['month'], cora_monthly_stats['mean'], yerr=cora_monthly_stats['std'], fmt='o', capsize=3, label='Monthly Standard Deviation')
+
+        #ax.errorbar(cora_stats['month'], cora_stats['mean'], yerr=cora_stats['std'], fmt='-o', label='CORA (mean ± std)')
+
+        # ⭐ LOGGERS
+        for i, df in enumerate(logger_datasets):
+
+            stats = df.groupby('month')['temperature'].mean().reset_index()
+
+            label = df['custom_name'].iloc[0] if 'custom_name' in df.columns else f"Logger {i+1}"
+
+            ax.plot(
+                stats['month'],
+                stats['temperature'],
+                marker='*',
+                linestyle='None',
+                markersize=14,
+                label=label
+            )
+
+        # =====================================================
+        # 🎨 FORMATTING
+        # =====================================================
+        ax.set_xticks(range(1, 13))
+        ax.set_xticklabels([
+            'Jan','Feb','Mar','Apr','May','Jun',
+            'Jul','Aug','Sep','Oct','Nov','Dec'
+        ])
+
+        ax.set_xlabel("Month")
+        ax.set_ylabel("Temperature [°C]")
+        ax.set_title("CORA vs Multiple Logger Monthly Temperature")
+        ax.grid(True)
+        ax.legend()
+
+        st.pyplot(fig)
