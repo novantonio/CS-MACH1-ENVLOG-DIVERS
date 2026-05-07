@@ -306,3 +306,31 @@ if "logger_data" in st.session_state:
     ax.legend()
 
     st.pyplot(fig)
+
+    # -----------------------------------------------------
+    # PLOT
+    # -----------------------------------------------------
+ 
+    fig2, ax2 = plt.subplots(figsize=(10, 5))
+
+    # Group by year and plot
+    for year, year_data in cora_temp_data.groupby(cora_temp_data['time'].dt.year):
+        year_data['day_of_year'] = year_data['time'].dt.dayofyear
+        
+        ax2.plot(year_data['day_of_year'], year_data['TEMP'], label=year, marker='.', linestyle='--')
+        
+        for fn in logger_data.keys():
+            sdata = logger_data[fn]
+            d = sdata['time'].iloc[0].month
+            tavg = sdata['temperature'].mean()
+            label = sdata['custom_name'].iloc[0]
+            
+            ax2.plot(d, tavg, '*', markersize=20, label=label)
+    
+    # Set labels and
+    ax2.set_xlabel('Day of Year')
+    ax2.set_ylabel('Temperature [°C]')
+    ax2.set_title(f'Interannual Temperature Variability at ({latitude:.2f}, {longitude:.2f})')
+    ax2.grid(True)
+    fig2.tight_layout()
+    st.pyplot(fig2)
