@@ -4,6 +4,63 @@ import io
 import requests
 import matplotlib.pyplot as plt
 
+# =========================================================
+# 🎨 CS-MACH1 BRANDING
+# =========================================================
+st.set_page_config(
+    page_title="CS-MACH1 | Logger vs CORA",
+    page_icon="🌡",
+    layout="wide"
+)
+
+st.markdown(
+    """
+    <style>
+
+    /* HEADER STYLE */
+    .main-header {
+        font-size: 34px;
+        font-weight: 700;
+        color: #00A6D6;
+        margin-bottom: 0px;
+    }
+
+    .sub-header {
+        font-size: 16px;
+        color: #555;
+        margin-bottom: 20px;
+    }
+
+    /* BUTTON STYLE */
+    .stButton>button {
+        background-color: #00A6D6;
+        color: white;
+        border-radius: 8px;
+        border: none;
+    }
+
+    .stButton>button:hover {
+        background-color: #007EA3;
+        color: white;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Logo (optional: put logo.png in repo)
+st.image("logo.png", width=220)
+
+st.markdown(
+    "<div class='main-header'>🌊 CS-MACH1: What does my envlogger data say about my dive? 🌊 </div>",
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    "<div class='sub-header'>Ocean temperature comparison platform (in-situ loggers vs CORA reanalysis)</div>",
+    unsafe_allow_html=True
+)
 
 # =========================================================
 # 🧠 LOGGER CSV PROCESSING
@@ -334,3 +391,16 @@ if "logger_data" in st.session_state:
     ax2.grid(True)
     fig2.tight_layout()
     st.pyplot(fig2)
+
+   # -----------------------------------------------------
+    
+    st.markdown("---")
+    
+    st.markdown(
+        """
+        <div style='text-align: center; color: grey; font-size: 13px;'>
+        CS-MACH1 Project • Ocean Temperature Monitoring Platform
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
