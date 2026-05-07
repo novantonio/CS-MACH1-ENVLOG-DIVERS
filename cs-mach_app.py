@@ -321,9 +321,9 @@ if "logger_data" in st.session_state:
         
         for fn in logger_data.keys():
             sdata = logger_data[fn]
-            d = sdata['time'].iloc[0].month
+            d = sdata['time'].iloc[0].timetuple().tm_yday
             tavg = sdata['temperature'].mean()
-            label = sdata['custom_name'].iloc[0]
+            label = sdata['custom_name'].iloc[0]      
             
             ax2.plot(d, tavg, '*', markersize=20, label=label)
     
