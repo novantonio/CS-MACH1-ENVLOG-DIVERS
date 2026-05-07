@@ -4,6 +4,13 @@ import io
 import requests
 import matplotlib.pyplot as plt
 
+st.image("logo.png", width=250)
+
+st.set_page_config(
+    page_title="CS-MACH1 my envlogger pipeline",
+    page_icon="logo.png",
+    layout="wide"
+)
 # =========================================================
 # 🎨 CS-MACH1 BRANDING
 # =========================================================
