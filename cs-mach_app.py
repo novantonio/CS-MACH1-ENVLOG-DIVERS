@@ -5,32 +5,29 @@ import requests
 import matplotlib.pyplot as plt
 
 
-# -------------------------
-# 🧠 DATA PROCESSING
-# -------------------------
-def envlogcsv_to_df(env_data, verbose=False):
+# =========================================================
+# 🧠 LOGGER PROCESSING (cached for speed)
+# =========================================================
+@st.cache_data(show_spinner=False)
+def process_logger(raw_df):
 
-    serial = env_data.iloc[9, 1]
-    name = env_data.iloc[10, 1]
-    sampling = env_data.iloc[13, 1]
+    # metadata extraction (safe)
+    serial = raw_df.iloc[9, 1]
+    name = raw_df.iloc[10, 1]
+    sampling = raw_df.iloc[13, 1]
 
-    # coordinates
-    latitude = pd.to_numeric(env_data.iloc[15, 1], errors='coerce')
-    longitude = pd.to_numeric(env_data.iloc[16, 1], errors='coerce')
-
-    if verbose:
-        st.write(f"Latitude: {latitude}, Longitude: {longitude}")
+    lat = pd.to_numeric(raw_df.iloc[15, 1], errors='coerce')
+    lon = pd.to_numeric(raw_df.iloc[16, 1], errors='coerce')
 
     # fallback coordinates
-    if pd.isna(latitude) or pd.isna(longitude):
-        latitude, longitude = 44.377253, 9.073425
+    if pd.isna(lat) or pd.isna(lon):
+        lat, lon = 44.377253, 9.073425
 
-    # special case
     if isinstance(name, str) and "surf" in name.lower():
-        latitude, longitude = 43.573851, 7.126338
+        lat, lon = 43.573851, 7.126338
 
-    # extract measurements
-    df = env_data.iloc[21:, :].copy()
+    # data extraction
+    df = raw_df.iloc[21:, :].copy()
     df.columns = ['time', 'temperature']
 
     df['time'] = pd.to_datetime(df['time'], errors='coerce')
@@ -38,61 +35,28 @@ def envlogcsv_to_df(env_data, verbose=False):
 
     df = df.dropna(subset=['time', 'temperature'])
 
+    df['month'] = df['time'].dt.month
+
     # metadata
     df['serial'] = serial
     df['custom_name'] = name
     df['sampling_f'] = sampling
-    df['latitude'] = latitude
-    df['longitude'] = longitude
+    df['latitude'] = lat
+    df['longitude'] = lon
 
     return df
 
 
-# -------------------------
-# 🌊 CORA DATA FETCH
-# -------------------------
-@st.cache_data(ttl=3600)
-def load_cora_data(url):
-    response = requests.get(url, timeout=60, verify=False)
-    response.raise_for_status()
+# =========================================================
+# 🌊 CORA DATA (cached by lat/lon)
+# =========================================================
+@st.cache_data(ttl=86400, show_spinner=False)
+def load_cora_data(lat, lon):
 
-    cora = pd.read_csv(io.StringIO(response.text), skiprows=[1])
+    lat = round(lat, 2)
+    lon = round(lon, 2)
 
-    cora['time'] = pd.to_datetime(cora['time'], errors='coerce')
-    cora['TEMP'] = pd.to_numeric(cora['TEMP'], errors='coerce')
-
-    return cora.dropna(subset=['time', 'TEMP'])
-
-
-# -------------------------
-# 🎯 STREAMLIT UI
-# -------------------------
-st.title("🌡 CORA vs Logger Temperature Comparison")
-
-uploaded_file = st.file_uploader("Upload logger CSV file", type=["csv"])
-
-if uploaded_file:
-
-    # -------------------------
-    # LOAD + PROCESS LOGGER
-    # -------------------------
-    raw_df = pd.read_csv(uploaded_file)
-    st.success("File uploaded successfully!")
-
-    logger_data = envlogcsv_to_df(raw_df)
-
-    # safety check
-    if logger_data.empty:
-        st.error("No valid data found in CSV")
-        st.stop()
-
-    # -------------------------
-    # CORA URL
-    # -------------------------
-    lat = logger_data['latitude'].iloc[0]
-    lon = logger_data['longitude'].iloc[0]
-
-    cora_url = (
+    url = (
         "https://erddap.emodnet-physics.eu/erddap/griddap/"
         "INSITU_GLO_PHY_TS_OA_MY_013_052_TEMP.csv"
         f"?TEMP[(1990-01-01T00:00:00Z):1:(2023-06-15T00:00:00Z)]"
@@ -101,50 +65,117 @@ if uploaded_file:
         f"[({lon}):1:({lon})]"
     )
 
-    # -------------------------
-    # LOAD CORA
-    # -------------------------
-    try:
-        cora_data = load_cora_data(cora_url)
-        st.success("CORA data loaded successfully")
-    except Exception as e:
-        st.error(f"Failed to load CORA data: {e}")
+    r = requests.get(url, timeout=30, verify=False)
+    r.raise_for_status()
+
+    df = pd.read_csv(io.StringIO(r.text), skiprows=[1])
+
+    df['time'] = pd.to_datetime(df['time'], errors='coerce')
+    df['TEMP'] = pd.to_numeric(df['TEMP'], errors='coerce')
+
+    df = df.dropna(subset=['time', 'TEMP'])
+
+    df['month'] = df['time'].dt.month
+
+    return df
+
+
+# =========================================================
+# 🎯 STREAMLIT UI
+# =========================================================
+st.title("🌡 CORA vs Multiple Logger Temperature Comparison")
+
+uploaded_files = st.file_uploader(
+    "Upload one or more logger CSV files",
+    type=["csv"],
+    accept_multiple_files=True
+)
+
+
+if uploaded_files:
+
+    logger_datasets = []
+
+    # =====================================================
+    # 📂 PROCESS ALL FILES
+    # =====================================================
+    for file in uploaded_files:
+        raw = pd.read_csv(file)
+        df = process_logger(raw)
+
+        if not df.empty:
+            logger_datasets.append(df)
+
+    if len(logger_datasets) == 0:
+        st.error("No valid logger datasets found.")
         st.stop()
 
-    # -------------------------
-    # MONTHLY STATS
-    # -------------------------
-  
+    # =====================================================
+    # 🌍 USE FIRST FILE FOR LOCATION
+    # =====================================================
+    lat = logger_datasets[0]['latitude'].iloc[0]
+    lon = logger_datasets[0]['longitude'].iloc[0]
+
+    # =====================================================
+    # 🌊 LOAD CORA (FAST CACHE)
+    # =====================================================
+    try:
+        cora_data = load_cora_data(lat, lon)
+        st.success("CORA data loaded")
+    except Exception as e:
+        st.error(f"CORA loading failed: {e}")
+        st.stop()
+
+    # =====================================================
+    # 📊 CORA MONTHLY STATS
+    # =====================================================
     cora_stats = cora_data.groupby('month')['TEMP'].agg(['mean', 'std']).reset_index()
 
-
-    cora_temp_data['month'] = cora_data['time'].dt.month
-    cora_monthly_stats = cora_temp_data.groupby('month')['TEMP'].agg(['mean', 'std']).reset_index()
-
-    
-    # -------------------------
-    # PLOT
-    # -------------------------
+    # =====================================================
+    # 📈 PLOT
+    # =====================================================
     fig, ax = plt.subplots(figsize=(10, 5))
 
-    
-    plt.figure(figsize=(12, 6))
-    ax.scatter(cora_monthly_stats['month'], cora_monthly_stats['mean'], label='Monthly Mean Temperature')
-    ax.errorbar(cora_monthly_stats['month'], cora_monthly_stats['mean'], yerr=cora_monthly_stats['std'], fmt='o', capsize=3, label='Monthly Standard Deviation')  
-    
-    d = logger_data['time'].iloc[0].month
-    tavg = logger_data['temperature'].mean()
-    ax.plot(d, tavg, '*', markersize=20, label=fn)
-    
-    ax.set_xlabel('Month')
-    ax.set_ylabel("Temperature [°C]")
-    ax.set_title('Monthly Mean and Standard Deviation of Temperature from Cora Data')
+    # CORA reference
+    ax.errorbar(
+        cora_stats['month'],
+        cora_stats['mean'],
+        yerr=cora_stats['std'],
+        fmt='-o',
+        label='CORA (mean ± std)'
+    )
+
+    # =====================================================
+    # ⭐ MULTIPLE LOGGERS (STAR MARKERS)
+    # =====================================================
+    for i, df in enumerate(logger_datasets):
+
+        stats = df.groupby('month')['temperature'].mean().reset_index()
+
+        label = df['custom_name'].iloc[0] if 'custom_name' in df.columns else f"Logger {i+1}"
+
+        ax.plot(
+            stats['month'],
+            stats['temperature'],
+            marker='*',
+            linestyle='None',
+            markersize=14,
+            label=label
+        )
+
+    # =====================================================
+    # 🎨 FORMATTING
+    # =====================================================
     ax.set_xticks(range(1, 13))
     ax.set_xticklabels([
         'Jan','Feb','Mar','Apr','May','Jun',
         'Jul','Aug','Sep','Oct','Nov','Dec'
     ])
+
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Temperature [°C]")
+    ax.set_title("CORA vs Multiple Logger Monthly Temperature")
     ax.grid(True)
-   
+    ax.legend()
 
     st.pyplot(fig)
