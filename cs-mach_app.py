@@ -71,8 +71,8 @@ def load_cora_data(lat, lon):
 
     df = df.dropna(subset=['time', 'TEMP'])
 
-    df['month'] = df['time'].dt.month
-
+    df.head()
+    
     return df
 
 
