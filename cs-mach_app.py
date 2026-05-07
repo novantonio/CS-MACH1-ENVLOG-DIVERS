@@ -360,8 +360,8 @@ if "logger_data" in st.session_state:
     )
 
     ax.grid(True)
-
-    ax.legend()
+    #ax.legend()
+    fig.tight_layout()
 
     st.pyplot(fig)
 
