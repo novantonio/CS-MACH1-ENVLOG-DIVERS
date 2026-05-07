@@ -53,15 +53,15 @@ def envlogcsv_to_df(env_data, verbose=False):
 # -------------------------
 @st.cache_data(ttl=3600)
 def load_cora_data(url):
-    response = requests.get(url, timeout=30, verify=False)
+    response = requests.get(url, timeout=60, verify=False)
     response.raise_for_status()
 
-    df = pd.read_csv(io.StringIO(response.text), skiprows=[1])
+    cora = pd.read_csv(io.StringIO(response.text), skiprows=[1])
 
-    df['time'] = pd.to_datetime(df['time'], errors='coerce')
-    df['TEMP'] = pd.to_numeric(df['TEMP'], errors='coerce')
+    cora['time'] = pd.to_datetime(cora['time'], errors='coerce')
+    cora['TEMP'] = pd.to_numeric(cora['TEMP'], errors='coerce')
 
-    return df.dropna(subset=['time', 'TEMP'])
+    return cora.dropna(subset=['time', 'TEMP'])
 
 
 # -------------------------
@@ -114,43 +114,37 @@ if uploaded_file:
     # -------------------------
     # MONTHLY STATS
     # -------------------------
-    logger_data['month'] = logger_data['time'].dt.month
-    cora_data['month'] = cora_data['time'].dt.month
-
-    logger_stats = logger_data.groupby('month')['temperature'].mean().reset_index()
+  
     cora_stats = cora_data.groupby('month')['TEMP'].agg(['mean', 'std']).reset_index()
 
+
+    cora_temp_data['month'] = cora_data['time'].dt.month
+    cora_monthly_stats = cora_temp_data.groupby('month')['TEMP'].agg(['mean', 'std']).reset_index()
+
+    
     # -------------------------
     # PLOT
     # -------------------------
     fig, ax = plt.subplots(figsize=(10, 5))
 
-    ax.errorbar(
-        cora_stats['month'],
-        cora_stats['mean'],
-        yerr=cora_stats['std'],
-        fmt='-o',
-        label='CORA (mean ± std)'
-    )
-
-    ax.plot(
-        logger_stats['month'],
-        logger_stats['temperature'],
-        '*',
-        markersize=12,
-        label='Logger mean'
-    )
-
+    
+    plt.figure(figsize=(12, 6))
+    ax.scatter(cora_monthly_stats['month'], cora_monthly_stats['mean'], label='Monthly Mean Temperature')
+    ax.errorbar(cora_monthly_stats['month'], cora_monthly_stats['mean'], yerr=cora_monthly_stats['std'], fmt='o', capsize=3, label='Monthly Standard Deviation')  
+    
+    d = logger_data['time'].iloc[0].month
+    tavg = logger_data['temperature'].mean()
+    ax.plot((d, tavg, '*', markersize=20, label=fn)
+    
+    ax.set_xlabel('Month')
+    ax.set_ylabel("Temperature [°C]")
+    ax.set_title('Monthly Mean and Standard Deviation of Temperature from Cora Data')
     ax.set_xticks(range(1, 13))
     ax.set_xticklabels([
         'Jan','Feb','Mar','Apr','May','Jun',
         'Jul','Aug','Sep','Oct','Nov','Dec'
     ])
-
-    ax.set_xlabel("Month")
-    ax.set_ylabel("Temperature [°C]")
-    ax.set_title("CORA vs Logger Monthly Temperature")
     ax.grid(True)
-    ax.legend()
+   
 
     st.pyplot(fig)
