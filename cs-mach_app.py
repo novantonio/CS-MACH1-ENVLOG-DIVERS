@@ -54,7 +54,7 @@ st.markdown(
 
 
 st.markdown(
-    "<div class='main-header'>🌊 CS-MACH1: What does my envlogger data say about my dive? 🌊 </div>",
+    "<div class='main-header'>🌊 CS-MACH1: What does my envlogger dive data say about Sea Water Temperature ? 🌡 </div>",
     unsafe_allow_html=True
 )
 
@@ -204,7 +204,7 @@ def load_cora_data(latitude, longitude):
 # =========================================================
 # 🎯 STREAMLIT UI
 # =========================================================
-st.title("🌡 CORA vs Multiple Logger Temperature Comparison")
+#st.title(" CORA vs Multiple Logger Temperature Comparison")
 
 uploaded_files = st.file_uploader(
     "Upload one or more logger CSV files",
