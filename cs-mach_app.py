@@ -428,8 +428,8 @@ if "logger_data" in st.session_state:
         """,
         unsafe_allow_html=True
     )
-     # -----------------------------------------------------
+    # -----------------------------------------------------
 
-    print ('note: stars are data collected in 2025, triangles in 2026')
+    st.info("Note: ⭐ stars = 2025 data, ▲ triangles = 2026 data, ■ squares = 2027 data.")
   
    
