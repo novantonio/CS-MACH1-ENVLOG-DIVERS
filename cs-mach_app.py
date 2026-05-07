@@ -134,7 +134,7 @@ if uploaded_file:
     
     d = logger_data['time'].iloc[0].month
     tavg = logger_data['temperature'].mean()
-    ax.plot((d, tavg, '*', markersize=20, label=fn)
+    ax.plot(d, tavg, '*', markersize=20, label=fn)
     
     ax.set_xlabel('Month')
     ax.set_ylabel("Temperature [°C]")
