@@ -428,67 +428,8 @@ if "logger_data" in st.session_state:
         """,
         unsafe_allow_html=True
     )
+     # -----------------------------------------------------
 
-    # =========================================================
-    # 📘 LEGEND PANEL (SEPARATE FIGURE)
-    # =========================================================
-    import matplotlib.lines as mlines
-    
-    fig_leg, ax_leg = plt.subplots(figsize=(6, 3))
-    ax_leg.axis("off")
-    
-    # ---------------------------------------------------------
-    # CORA legend entry
-    # ---------------------------------------------------------
-    cora_handle = mlines.Line2D(
-        [],
-        [],
-        color='blue',
-        marker='o',
-        linestyle='-',
-        label='CORA (mean ± std)'
-    )
-    
-    # ---------------------------------------------------------
-    # LOGGER legend entries (stars)
-    # ---------------------------------------------------------
-    logger_handles = []
-    
-    for fn in logger_data.keys():
-    
-        label = logger_data[fn]['custom_name'].iloc[0]
-    
-        handle = mlines.Line2D(
-            [],
-            [],
-            color='black',
-            marker='*',
-            linestyle='None',
-            markersize=12,
-            label=f'Logger: {label}'
-        )
-    
-        logger_handles.append(handle)
-    
-    # ---------------------------------------------------------
-    # YEAR MARKERS (if you use them in second plot)
-    # ---------------------------------------------------------
-    h_2025 = mlines.Line2D([], [], color='gray', marker='*', linestyle='None', label='2025 (star)')
-    h_2026 = mlines.Line2D([], [], color='gray', marker='^', linestyle='None', label='2026 (triangle)')
-    h_2027 = mlines.Line2D([], [], color='gray', marker='s', linestyle='None', label='2027 (square)')
-    
-    # ---------------------------------------------------------
-    # COMBINE ALL LEGENDS
-    # ---------------------------------------------------------
-    handles = [cora_handle] + logger_handles + [h_2025, h_2026, h_2027]
-    
-    ax_leg.legend(
-        handles=handles,
-        loc="center",
-        frameon=False,
-        ncol=1
-    )
-    
-    ax_leg.set_title("Legend")
-    
-    st.pyplot(fig_leg)
+    print ('note: stars are data collected in 2025, triangles in 2026')
+  
+   
