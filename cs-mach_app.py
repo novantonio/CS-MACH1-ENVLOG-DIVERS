@@ -338,8 +338,19 @@ if "logger_data" in st.session_state:
         d = sdata['time'].iloc[0].month
         tavg = sdata['temperature'].mean()
         label = sdata['custom_name'].iloc[0]
-
-        ax.plot(d, tavg, '*', markersize=20, label=label)
+        year = sdata['time'].iloc[0].year
+       
+        # marker selection by year
+        if year == 2025:
+            marker = '*'
+        elif year == 2026:
+            marker = '^'   # triangle
+        elif year == 2027:
+            marker = 's'   # square
+        else:
+            marker = 'o'   # fallback
+        
+        ax.plot(d, tavg, marker=marker, markersize=20, linestyle='None', label=label)
 
     # -----------------------------------------------------
     # FORMAT
@@ -382,8 +393,20 @@ if "logger_data" in st.session_state:
             d = sdata['time'].iloc[0].timetuple().tm_yday
             tavg = sdata['temperature'].mean()
             label = sdata['custom_name'].iloc[0]      
+            year = sdata['time'].iloc[0].year
             
-            ax2.plot(d, tavg, '*', markersize=20, label=label)
+            # marker selection by year
+            if year == 2025:
+                marker = '*'
+            elif year == 2026:
+                marker = '^'   # triangle
+            elif year == 2027:
+                marker = 's'   # square
+            else:
+                marker = 'o'   # fallback
+            
+            ax2.plot(d, tavg, marker=marker, markersize=20, linestyle='None', label=label)
+            #ax2.plot(d, tavg, '*', markersize=20, label=label)
     
     # Set labels and
     ax2.set_xlabel('Day of Year')
