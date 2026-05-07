@@ -207,7 +207,7 @@ def load_cora_data(latitude, longitude):
 #st.title(" CORA vs Multiple Logger Temperature Comparison")
 
 uploaded_files = st.file_uploader(
-    "Upload one or more logger CSV files",
+    "Upload one or more envlog CSV files",
     type=["csv"],
     accept_multiple_files=True
 )
